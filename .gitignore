@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local environment — NEVER commit your API key
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel/
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+.vercel
