@@ -1,9 +1,9 @@
-# 🟢 Contexto Word Finder
+# 🟢 Contexto Helper
 
 An AI-powered assistant to help you crack the daily [Contexto](https://contexto.me) word puzzle.
 Enter your guesses and their ranks — the AI analyses the semantic pattern and suggests smarter words to try next.
 
-> **Live demo →** [contexto-word-finder.vercel.app](https://contexto-word-finder.vercel.app)
+> **Live demo →** [contexto-helper-ml5gbfxke-aishwarya-menons-projects.vercel.app](https://contexto-helper-ml5gbfxke-aishwarya-menons-projects.vercel.app)
 
 ---
 
@@ -11,7 +11,7 @@ Enter your guesses and their ranks — the AI analyses the semantic pattern and 
 
 Contexto is a daily word game where you try to guess a secret word. Every guess is ranked by how semantically similar it is to the answer — **#1 means you found it**. The challenge is figuring out which direction to search based on your rankings.
 
-Contexto Word Finder helps by analysing your guesses and using AI to suggest the most likely next words to try.
+Contexto Helper analyses your guesses and uses AI to suggest the most likely next words to try.
 
 ---
 
@@ -48,8 +48,8 @@ Contexto Word Finder helps by analysing your guesses and using AI to suggest the
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/contexto-word-finder.git
-cd contexto-word-finder
+git clone https://github.com/AishMe/contexto-helper.git
+cd contexto-helper
 ```
 
 ### 2. Install dependencies
@@ -108,20 +108,20 @@ Fork this repo, then push your changes to your own GitHub account.
 
 ## 🔑 Using Your Own AI Key (BYOK)
 
-For better suggestions, you can use your own API key from a premium provider directly in the app settings:
+For better suggestions, use your own API key from a premium provider via the in-app Settings panel:
 
 - **OpenAI** — gpt-4o, gpt-4o-mini
-- **Anthropic** — claude-sonnet, claude-haiku
+- **Anthropic** — claude-haiku-4-5, claude-sonnet-4-6
 - **OpenRouter paid models** — any model on OpenRouter
 
-Click the **Settings** icon in the app, paste your key, and choose your provider. Your key is stored only in your browser's localStorage and is never sent to our servers.
+Click the ⚙️ **Settings** icon in the app, paste your key, and choose your provider. Your key is stored only in your browser's localStorage and is never sent to our servers.
 
 ---
 
 ## 🗂 Project Structure
 
 ```
-contexto-word-finder/
+contexto-helper/
 ├── api/
 │   └── suggest.js           ← Vercel serverless function (AI proxy)
 ├── src/

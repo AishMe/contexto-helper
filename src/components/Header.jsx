@@ -1,7 +1,10 @@
 // src/components/Header.jsx
-// Top navigation bar — logo + subtitle, mirrors Contexto's minimal header.
+// Top navigation bar — logo + settings gear icon.
 
-export default function Header() {
+/**
+ * @param {Function} onSettingsClick — opens the settings panel
+ */
+export default function Header({ onSettingsClick }) {
   return (
     <header className="
       w-full border-b border-border
@@ -21,10 +24,25 @@ export default function Header() {
         </h1>
       </div>
 
-      {/* Subtitle / tagline */}
-      <p className="text-subtext text-xs hidden sm:block">
-        AI-powered word assistant
-      </p>
+      {/* Right side: tagline + settings button */}
+      <div className="flex items-center gap-4">
+        <p className="text-subtext text-xs hidden sm:block">
+          AI-powered word assistant
+        </p>
+
+        {/* Settings gear button */}
+        <button
+          onClick={onSettingsClick}
+          title="Settings — change AI provider or add your own key"
+          className="
+            text-muted hover:text-text transition-colors
+            text-lg leading-none p-1 rounded-lg
+            hover:bg-surface
+          "
+        >
+          ⚙️
+        </button>
+      </div>
     </header>
   );
 }

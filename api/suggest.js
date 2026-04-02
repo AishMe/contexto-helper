@@ -1,13 +1,15 @@
 // api/suggest.js
 // Vercel Serverless Function — runs on the server, never exposed to the browser.
-// This proxy pattern keeps the OPENROUTER_API_KEY secret.
+// Used only for the free tier (OpenRouter free models).
+// BYOK requests go directly from browser to provider — never through here.
 //
 // Request  (POST): { guesses: Array<{ word: string, rank: number }> }
 // Response (200):  { suggestions: string[], strategy: string }
+
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
-// Manually load .env.local in development
+// Manually load .env.local in development (vercel dev sometimes misses it)
 try {
   const env = readFileSync(resolve(process.cwd(), '.env.local'), 'utf-8');
   env.split('\n').forEach(line => {
@@ -17,59 +19,67 @@ try {
 } catch {}
 
 export default async function handler(req, res) {
-  // ── Only allow POST ────────────────────────────────────────────────────
+  // ── Only allow POST ──────────────────────────────────────────────────────
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { guesses } = req.body;
 
-  // ── Basic input validation ─────────────────────────────────────────────
+  // ── Basic input validation ───────────────────────────────────────────────
   if (!Array.isArray(guesses) || guesses.length === 0) {
     return res.status(400).json({ error: 'guesses array is required' });
   }
 
-  // ── Build the prompt ───────────────────────────────────────────────────
-  // Sort guesses best-first so the LLM sees the most useful context first
+  // Sort best-first so the model sees the most useful context first
   const sorted = [...guesses].sort((a, b) => a.rank - b.rank);
+  const best   = sorted[0].rank;
 
-  const guessList = sorted
-    .map(g => `  "${g.word}" → rank #${g.rank}`)
-    .join('\n');
+  // ── Improved prompt with rank gradient context ───────────────────────────
+  const gradientInfo = sorted.length >= 2
+    ? `Rank gap: best is #${best}, worst is #${sorted[sorted.length - 1].rank}. ${best < 100 ? 'Very close — stay in the same tight semantic field.' : best < 300 ? 'Getting warm — explore closely related words.' : 'Far away — try broader semantic angles.'}`
+    : '';
 
-  const prompt = `You are helping solve Contexto, a word similarity game where guesses are ranked by semantic closeness to a secret word. Rank #1 means the guess IS the secret word.
+  const prompt = `You are an expert at Contexto, a word similarity game. The secret word ranks guesses by semantic closeness — #1 means the guess IS the secret word.
 
-    The player's guesses ranked best to worst:
-    ${sorted.map(g => `${g.word}: #${g.rank}`).join(', ')}
+Player's guesses (best rank first):
+${sorted.map(g => `  "${g.word}" → #${g.rank}`).join('\n')}
 
-    Analyse the semantic pattern and suggest 5 real English words the player should try next. Pick words that are semantically close to the best-ranked guesses.
+${gradientInfo}
 
-    Respond with ONLY a JSON object in this format (no markdown, no explanation):
-    {"suggestions":["REAL_WORD_1","REAL_WORD_2","REAL_WORD_3","REAL_WORD_4","REAL_WORD_5"],"strategy":"SHORT_TIP"}`;
+Rules for your suggestions:
+- Suggest words semantically CLOSER to the best-ranked guesses
+- Do NOT suggest any of these already-guessed words: ${sorted.map(g => g.word).join(', ')}
+- Think: synonyms, subcategories, associated objects, related actions, descriptors
+- Prefer specific concrete nouns/verbs over vague abstract words
+- Each of the 5 suggestions should explore a slightly different semantic angle
 
-  // ── Call OpenRouter ────────────────────────────────────────────────────
+Respond with ONLY valid JSON, no markdown, no explanation outside the JSON:
+{"suggestions":["WORD1","WORD2","WORD3","WORD4","WORD5"],"strategy":"ONE_SHORT_ACTIONABLE_TIP"}`;
+
+  // ── Call OpenRouter ──────────────────────────────────────────────────────
   try {
-    // Abort the request if it takes longer than 30 seconds
+    // Abort if the model takes too long
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout    = setTimeout(() => controller.abort(), 30000);
 
     const openRouterRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      signal: controller.signal,
-      method: 'POST',
+      method:  'POST',
+      signal:  controller.signal,
       headers: {
         'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
         'Content-Type':  'application/json',
-        // OpenRouter recommends these headers for attribution
         'HTTP-Referer':  'https://contexto-helper.vercel.app',
         'X-Title':       'Contexto Helper',
       },
       body: JSON.stringify({
-        model: 'openrouter/free',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1000,
-        temperature: 0.5,  // lower = more focused, less likely to return empty
-        }),
+        model:       'openrouter/free', // auto-picks best available free model
+        messages:    [{ role: 'user', content: prompt }],
+        max_tokens:  1000,
+        temperature: 0.4,
+      }),
     });
+
     clearTimeout(timeout);
 
     if (!openRouterRes.ok) {
@@ -79,21 +89,19 @@ export default async function handler(req, res) {
     }
 
     const data = await openRouterRes.json();
-    // Some free models (reasoning models) put output in reasoning instead of content
-    const message = data.choices?.[0]?.message;
-    const raw = message?.content || message?.reasoning || '';
 
-    // ── Parse the JSON the LLM returned ─────────────────────────────────
-    // Strip any accidental markdown fences before parsing
-    // Extract JSON from the response — the model sometimes wraps it in text
+    // Some free reasoning models put output in reasoning instead of content
+    const message = data.choices?.[0]?.message;
+    const raw     = message?.content || message?.reasoning || '';
+
+    // Extract JSON — models sometimes wrap it in extra text
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-        console.error('No JSON found in model response:', raw);
-        return res.status(502).json({ error: 'AI returned an unexpected response. Try again.' });
+      console.error('No JSON found in model response:', raw);
+      return res.status(502).json({ error: 'AI returned an unexpected response. Try again.' });
     }
 
-    const clean  = jsonMatch[0];
-    const parsed = JSON.parse(clean);
+    const parsed = JSON.parse(jsonMatch[0]);
 
     return res.status(200).json({
       suggestions: parsed.suggestions || [],
@@ -103,9 +111,9 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error('suggest handler error:', err);
 
-    // Give the user a friendly timeout message instead of a generic 500
+    // Friendly timeout message
     if (err.name === 'AbortError' || err.code === 'UND_ERR_HEADERS_TIMEOUT') {
-        return res.status(504).json({ error: 'AI took too long. Try again — free models can be slow.' });
+      return res.status(504).json({ error: 'AI took too long. Try again — free models can be slow.' });
     }
 
     return res.status(500).json({ error: 'Internal server error.' });
