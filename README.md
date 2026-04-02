@@ -3,7 +3,7 @@
 An AI-powered assistant to help you crack the daily [Contexto](https://contexto.me) word puzzle.
 Enter your guesses and their ranks — the AI analyses the semantic pattern and suggests smarter words to try next.
 
-> **Live demo →** [contexto-helper-ml5gbfxke-aishwarya-menons-projects.vercel.app](https://contexto-helper-ml5gbfxke-aishwarya-menons-projects.vercel.app)
+> **Live demo →** [contexto-word-finder.vercel.app](https://contexto-word-finder.vercel.app)
 
 ---
 
