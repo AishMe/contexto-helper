@@ -1,10 +1,11 @@
 // src/components/SuggestionsPanel.jsx
 // Shows AI-generated word suggestions and a strategy tip.
-// Calls the /api/suggest serverless function via fetchSuggestions().
+// Includes animated loading state and a retry button on error.
 
 import { useState, useEffect } from 'react';
+import { fetchSuggestions } from '../utils/api';
 
-// ── Loading messages — cycles every 3s so the user knows it's still working ──
+// ── Loading messages — cycles every 3s so user knows it's still working ───────
 const LOADING_MESSAGES = [
   '🔍 Analysing your guesses…',
   '🧠 Finding semantic patterns…',
@@ -17,7 +18,6 @@ const LOADING_MESSAGES = [
 function LoadingState() {
   const [msgIndex, setMsgIndex] = useState(0);
 
-  // Cycle through messages every 3 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setMsgIndex(i => (i + 1) % LOADING_MESSAGES.length);
@@ -27,12 +27,8 @@ function LoadingState() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Animated message */}
-      <div className="
-        border border-accent/20 bg-accent/5 rounded-lg
-        px-4 py-4 text-center
-      ">
-        {/* Spinning dots */}
+      <div className="border border-accent/20 bg-accent/5 rounded-lg px-4 py-4 text-center">
+        {/* Bouncing dots */}
         <div className="flex justify-center gap-1.5 mb-3">
           {[0, 1, 2].map(i => (
             <span
@@ -42,41 +38,30 @@ function LoadingState() {
             />
           ))}
         </div>
-
-        {/* Cycling status message */}
-        <p className="text-accent text-sm font-medium transition-all duration-500">
-          {LOADING_MESSAGES[msgIndex]}
-        </p>
-        <p className="text-subtext text-xs mt-1">
-          Free AI models can take 20–40 seconds
-        </p>
+        <p className="text-accent text-sm font-medium">{LOADING_MESSAGES[msgIndex]}</p>
+        <p className="text-subtext text-xs mt-1">Free AI models can take 20–40 seconds</p>
       </div>
 
-      {/* Skeleton rows to show something is coming */}
+      {/* Skeleton rows */}
       <div className="flex flex-col gap-1.5 animate-pulse">
         {[100, 80, 90, 70, 85].map((w, i) => (
-          <div
-            key={i}
-            className="h-9 bg-surface rounded-lg"
-            style={{ width: `${w}%` }}
-          />
+          <div key={i} className="h-9 bg-surface rounded-lg" style={{ width: `${w}%` }} />
         ))}
       </div>
     </div>
   );
 }
-import { fetchSuggestions } from '../utils/api';
 
 /**
  * @param {Array<{word: string, rank: number}>} guesses — current guess list
  */
 export default function SuggestionsPanel({ guesses }) {
-  const [suggestions, setSuggestions] = useState([]);  // string[]
-  const [strategy,    setStrategy]    = useState('');  // strategy tip text
+  const [suggestions, setSuggestions] = useState([]);
+  const [strategy,    setStrategy]    = useState('');
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState('');
 
-  // ── Request suggestions from AI ───────────────────────────────────────
+  // ── Fetch suggestions ───────────────────────────────────────────────────
   async function handleGetSuggestions() {
     if (guesses.length < 2) {
       setError('Add at least 2 guesses to get suggestions.');
@@ -91,7 +76,7 @@ export default function SuggestionsPanel({ guesses }) {
     try {
       const data = await fetchSuggestions(guesses);
       setSuggestions(data.suggestions || []);
-      setStrategy(data.strategy   || '');
+      setStrategy(data.strategy || '');
     } catch (err) {
       setError(err.message || 'Something went wrong. Try again.');
     } finally {
@@ -102,13 +87,11 @@ export default function SuggestionsPanel({ guesses }) {
   return (
     <div className="flex flex-col gap-4">
 
-      {/* Section title */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-text font-semibold text-sm uppercase tracking-widest">
           AI Suggestions
         </h2>
-
-        {/* Trigger button */}
         <button
           onClick={handleGetSuggestions}
           disabled={loading}
@@ -122,14 +105,26 @@ export default function SuggestionsPanel({ guesses }) {
         </button>
       </div>
 
-      {/* Error state */}
-      {error && (
-        <p className="text-red text-xs border border-red/20 bg-red/5 rounded-lg px-3 py-2">
-          {error}
-        </p>
+      {/* Error state — with retry button */}
+      {error && !loading && (
+        <div className="border border-red/20 bg-red/5 rounded-lg px-4 py-3 flex flex-col gap-2">
+          <p className="text-red text-xs">{error}</p>
+          {/* Only show retry if it's a real error, not a validation message */}
+          {guesses.length >= 2 && (
+            <button
+              onClick={handleGetSuggestions}
+              className="
+                self-start text-xs text-red border border-red/30
+                rounded-lg px-3 py-1.5 hover:bg-red/10 transition-colors
+              "
+            >
+              🔄 Try Again
+            </button>
+          )}
+        </div>
       )}
 
-      {/* Loading state — animated messages so user knows it's thinking */}
+      {/* Loading state */}
       {loading && <LoadingState />}
 
       {/* Suggestion list */}
@@ -144,37 +139,34 @@ export default function SuggestionsPanel({ guesses }) {
                 px-4 py-2.5 hover:border-accent/50 transition-colors
               "
             >
-              {/* Rank position within suggestions */}
-              <span className="text-subtext font-mono text-xs w-5 text-right">
-                {idx + 1}.
-              </span>
-              <span className="text-text text-sm font-medium capitalize">
-                {word}
-              </span>
+              <span className="text-subtext font-mono text-xs w-5 text-right">{idx + 1}.</span>
+              <span className="text-text text-sm font-medium capitalize">{word}</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Strategy tip from AI */}
+      {/* Strategy tip */}
       {!loading && strategy && (
-        <div className="
-          border border-accent/20 bg-accent/5 rounded-lg
-          px-4 py-3 text-xs text-subtext leading-relaxed
-        ">
-          <span className="text-accent font-semibold block mb-1">
-            💡 Strategy
-          </span>
+        <div className="border border-accent/20 bg-accent/5 rounded-lg px-4 py-3 text-xs text-subtext leading-relaxed">
+          <span className="text-accent font-semibold block mb-1">💡 Strategy</span>
           {strategy}
         </div>
       )}
 
-      {/* Initial empty state */}
+      {/* Resuggest button — shown after results to get fresh suggestions */}
+      {!loading && suggestions.length > 0 && (
+        <button
+          onClick={handleGetSuggestions}
+          className="text-xs text-muted hover:text-subtext transition-colors text-center"
+        >
+          🔄 Get new suggestions
+        </button>
+      )}
+
+      {/* Empty state */}
       {!loading && suggestions.length === 0 && !error && (
-        <div className="
-          border border-dashed border-border rounded-lg
-          py-10 text-center text-muted text-sm
-        ">
+        <div className="border border-dashed border-border rounded-lg py-10 text-center text-muted text-sm">
           Add guesses, then click Suggest
         </div>
       )}

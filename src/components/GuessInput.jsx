@@ -1,30 +1,34 @@
 // src/components/GuessInput.jsx
 // The top input bar — word + rank fields with validation.
-// Closely mirrors Contexto's minimal input style.
+// Supports Enter key to submit for faster workflow.
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 /**
- * @param {Function} onAddGuess — called with { word, rank } on submit
+ * @param {Function} onAddGuess    — called with { word, rank } on submit
+ * @param {Set}      existingWords — set of already-added words for dupe check
  */
 export default function GuessInput({ onAddGuess, existingWords }) {
-  const [word, setWord]   = useState('');
-  const [rank, setRank]   = useState('');
+  const [word,  setWord]  = useState('');
+  const [rank,  setRank]  = useState('');
   const [error, setError] = useState('');
 
-  // ── Validation ────────────────────────────────────────────────────────
+  const wordRef = useRef(null);
+
+  // Auto-focus the word input on mount
+  useEffect(() => { wordRef.current?.focus(); }, []);
+
+  // ── Validation ─────────────────────────────────────────────────────────
   function validate() {
     const trimmed = word.trim().toLowerCase();
-
-    if (!trimmed)                        return 'Enter a word.';
-    if (!/^[a-z]+$/.test(trimmed))       return 'Letters only, no spaces.';
+    if (!trimmed)                          return 'Enter a word.';
+    if (!/^[a-z]+$/.test(trimmed))         return 'Letters only, no spaces.';
     if (!rank || isNaN(rank) || +rank < 1) return 'Enter a valid rank (≥ 1).';
-    if (existingWords.has(trimmed))      return `"${trimmed}" already added.`;
-
-    return null; // no error
+    if (existingWords.has(trimmed))        return `"${trimmed}" already added.`;
+    return null;
   }
 
-  // ── Submit handler ────────────────────────────────────────────────────
+  // ── Submit handler ──────────────────────────────────────────────────────
   function handleSubmit(e) {
     e.preventDefault();
     const validationError = validate();
@@ -32,21 +36,19 @@ export default function GuessInput({ onAddGuess, existingWords }) {
 
     onAddGuess({ word: word.trim().toLowerCase(), rank: parseInt(rank, 10) });
 
-    // Reset fields
+    // Reset and re-focus word input for fast back-to-back entry
     setWord('');
     setRank('');
     setError('');
+    wordRef.current?.focus();
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-2 w-full"
-      noValidate
-    >
+    <form onSubmit={handleSubmit} className="flex flex-col gap-2 w-full" noValidate>
       <div className="flex gap-2">
-        {/* Word input */}
+        {/* Word input — Enter key submits the form */}
         <input
+          ref={wordRef}
           type="text"
           value={word}
           onChange={e => { setWord(e.target.value); setError(''); }}
@@ -89,10 +91,13 @@ export default function GuessInput({ onAddGuess, existingWords }) {
         </button>
       </div>
 
+      {/* Hint text */}
+      <p className="text-muted text-xs pl-1">
+        Press <kbd className="bg-surface border border-border rounded px-1 py-0.5 text-xs">Enter</kbd> to add quickly
+      </p>
+
       {/* Inline validation error */}
-      {error && (
-        <p className="text-red text-xs pl-1">{error}</p>
-      )}
+      {error && <p className="text-red text-xs pl-1">{error}</p>}
     </form>
   );
 }

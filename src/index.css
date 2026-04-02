@@ -1,10 +1,9 @@
 /* src/index.css */
-/* Tailwind base layers */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── Global resets & base styles ── */
+/* ── Global resets ── */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -16,15 +15,36 @@ body {
   color: #e8e8e8;
   font-family: 'DM Sans', sans-serif;
   min-height: 100vh;
+  /* Prevent horizontal scroll on mobile */
+  overflow-x: hidden;
 }
 
-/* Thin custom scrollbar — matches Contexto's dark aesthetic */
+/* Thin custom scrollbar */
 ::-webkit-scrollbar        { width: 6px; }
 ::-webkit-scrollbar-track  { background: #1a1a1a; }
 ::-webkit-scrollbar-thumb  { background: #2a2a2a; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
 
-/* Smooth color transition for rank badges */
+/* Rank badge colour transition */
 .badge-transition {
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ── Mobile: make number inputs behave on iOS ── */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+/* ── Mobile: prevent tap highlight flash ── */
+button, input, select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* kbd styling */
+kbd {
+  font-family: 'DM Mono', monospace;
 }
